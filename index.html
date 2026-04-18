@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+=============================================================
+  SOCCER STOPWATCH — SETUP & HOSTING INSTRUCTIONS
+=============================================================
+
+WHAT YOU HAVE:
+  This is a single self-contained HTML file. No internet
+  connection is needed to run it once it's on your phone.
+
+HOW TO HOST IT (pick one):
+
+─────────────────────────────────────────────────────────────
+OPTION 1 — EASIEST: GitHub Pages (free, reliable)
+─────────────────────────────────────────────────────────────
+1. Go to github.com and create a free account if needed
+2. Click the "+" icon → "New repository"
+3. Name it anything, e.g. "stopwatch"
+4. Check "Add a README file" and click "Create repository"
+5. Click "Add file" → "Upload files"
+6. Drag this HTML file in — IMPORTANT: rename it to
+   exactly:  index.html  before uploading
+7. Click "Commit changes"
+8. Go to Settings → Pages (left sidebar)
+9. Under "Source" select "Deploy from a branch"
+10. Choose "main" branch, click Save
+11. Wait ~60 seconds, refresh — your URL will appear:
+    https://YOUR-USERNAME.github.io/stopwatch/
+12. Open that URL in Safari on your iPhone
+
+─────────────────────────────────────────────────────────────
+OPTION 2: Netlify Drop (fastest, no account needed)
+─────────────────────────────────────────────────────────────
+1. Rename this file to:  index.html
+2. Put it in a folder by itself on your computer
+3. Go to app.netlify.com/drop in your browser
+4. Drag that entire folder onto the page
+5. Netlify gives you a URL instantly, e.g.:
+    https://random-name-123.netlify.app
+6. Open that URL in Safari on your iPhone
+
+─────────────────────────────────────────────────────────────
+OPTION 3: Your own web hosting / server
+─────────────────────────────────────────────────────────────
+  Upload this file as index.html to any web server.
+  It needs to be served over HTTPS (not just HTTP) for
+  the clipboard copy function to work on iOS.
+
+─────────────────────────────────────────────────────────────
+ADDING TO YOUR iPHONE HOME SCREEN (do this after hosting):
+─────────────────────────────────────────────────────────────
+1. Open the URL in Safari (must be Safari, not Chrome)
+2. Tap the Share button (box with arrow pointing up)
+3. Scroll down and tap "Add to Home Screen"
+4. Name it whatever you like, tap "Add"
+5. From now on, open it from the home screen icon —
+   it will launch full screen with no Safari chrome
+
+─────────────────────────────────────────────────────────────
+COLORS — easy to change:
+─────────────────────────────────────────────────────────────
+  All button and background colors are in the :root block
+  at the top of the <style> section below. Each has a
+  plain-English label so you can find and change them
+  without hunting through the code.
+
+=============================================================
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stopwatch">
+  <meta name="theme-color" content="#000000">
+  <title>Stopwatch</title>
+
+  <style>
+    /* =============================================================
+       COLORS — change these to restyle the whole app
+       ============================================================= */
+    :root {
+      --color-app-background:   #000000;
+      --color-btn-start:        #2f5d77;
+      --color-btn-stop:         #70221f;
+      --color-btn-copy:         #3a3a3a;
+      --color-btn-reset:        #70221f;
+      --color-btn-T:            #97cce7;
+      --color-btn-G:            #67ac5b;
+      --color-btn-Q:            #f1a481;
+      --color-btn-E:            #f5c344;
+      --color-clock-bg:         #2a2a2a;
+      --color-list-bg:          #2a2a2a;
+      --color-list-divider:     #3a3a3a;
+      --color-list-time-text:   #cccccc;
+      --color-top-btn-text:     #ffffff;
+      --color-side-btn-text:    #000000;
+      --color-clock-text:       #ffffff;
+    }
+
+    /* =============================================================
+       RESET & BASE
+       ============================================================= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      position: fixed;
+      background: var(--color-app-background);
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #app {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px);
+      background: var(--color-app-background);
+    }
+
+    /* =============================================================
+       MAIN CONTAINER — 100:130 aspect ratio
+       ============================================================= */
+    #sw {
+      width: 100%;
+      max-width: 480px;
+      aspect-ratio: 100 / 160;
+      display: flex;
+      flex-direction: column;
+      padding: 3.8%;
+      background: var(--color-app-background);
+    }
+
+    /* =============================================================
+       TOP ROW — Start/Stop, Copy Times, Reset
+       ============================================================= */
+    .top-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2%;
+      height: 14.6%;
+      flex-shrink: 0;
+    }
+
+    .top-btn {
+      border-radius: 8px;
+      border: none;
+      font-size: clamp(18px, 4.5vw, 32px);
+      font-weight: 500;
+      color: var(--color-top-btn-text);
+      cursor: pointer;
+      transition: transform 0.1s;
+      line-height: 1.1;
+    }
+    .top-btn:active { transform: scale(0.95); }
+
+    #swStart { background: var(--color-btn-start); }
+    #swStart.running { background: var(--color-btn-stop); }
+    #swCopy  { background: var(--color-btn-copy); }
+    #swReset { background: var(--color-btn-reset); }
+
+    /* =============================================================
+       REAL TIME DISPLAY
+       ============================================================= */
+    .clock-area {
+      height: 15.7%;
+      flex-shrink: 0;
+      margin-top: 3.85%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-clock-bg);
+      border-radius: 8px;
+    }
+
+    #swClock {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(24px, 6.5vw, 44px);
+      font-weight: 500;
+      color: var(--color-clock-text);
+      letter-spacing: 2px;
+    }
+
+    /* =============================================================
+       MIDDLE ROW — side buttons + list
+       Columns: T/G | gap | list | gap | Q/E
+       ============================================================= */
+    .middle-row {
+      display: grid;
+      grid-template-columns: 18fr 3.5fr 57fr 3.5fr 18fr;
+      margin-top: 3.85%;
+      flex: 1;
+      min-height: 0;
+      gap: 0;
+    }
+
+    .side-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3.85%;
+    }
+
+    .gap-col {
+      background: var(--color-app-background);
+    }
+
+    .side-btn {
+      flex: 1;
+      border: none;
+      font-size: clamp(48px, 11vw, 50px);
+      font-weight: 700;
+      color: var(--color-side-btn-text);
+      cursor: pointer;
+      border-radius: 8px;
+      transition: transform 0.1s, opacity 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .side-btn:active  { transform: scale(0.94); }
+    .side-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    #swBtnT { background: var(--color-btn-T); }
+    #swBtnG { background: var(--color-btn-G); }
+    #swBtnQ { background: var(--color-btn-Q); }
+    #swBtnE { background: var(--color-btn-E); }
+
+    /* =============================================================
+       TIME CODES LIST BOX
+       ============================================================= */
+    .list-col {
+      position: relative;
+      overflow: hidden;
+      background: var(--color-list-bg);
+      border-radius: 8px;
+    }
+
+    #swList {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #swList.has-entries { justify-content: flex-end; }
+
+    .sw-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(14px, 3vw, 20px);
+      padding: 4px 0;
+      border-bottom: 0.5px solid var(--color-list-divider);
+    }
+    .sw-entry:last-child { border-bottom: none; }
+
+    .sw-lbl {
+      font-weight: 700;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .sw-time { color: var(--color-list-time-text); }
+
+    /* =============================================================
+       FLASH OVERLAY — full list box color burst on button press
+       ============================================================= */
+    .flash-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      border-radius: 8px;
+    }
+
+    /* =============================================================
+       TOAST — clipboard confirmation message
+       ============================================================= */
+    .toast {
+      text-align: center;
+      font-size: 14px;
+      color: #888888;
+      height: 18px;
+      margin-top: 6px;
+      flex-shrink: 0;
+      transition: opacity 0.3s;
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <div id="sw">
+
+      <div class="top-row">
+        <button class="top-btn" id="swStart">Start</button>
+        <button class="top-btn" id="swCopy">Copy<br>Times</button>
+        <button class="top-btn" id="swReset">Reset</button>
+      </div>
+
+      <div class="clock-area">
+        <span id="swClock">--:--:--.--</span>
+      </div>
+
+      <div class="middle-row">
+        <div class="side-col">
+          <button class="side-btn" id="swBtnT" disabled>T</button>
+          <button class="side-btn" id="swBtnG" disabled>G</button>
+        </div>
+        <div class="gap-col"></div>
+        <div class="list-col">
+          <div id="swList"></div>
+          <div class="flash-overlay" id="swFlash"></div>
+        </div>
+        <div class="gap-col"></div>
+        <div class="side-col">
+          <button class="side-btn" id="swBtnQ" disabled>Q</button>
+          <button class="side-btn" id="swBtnE" disabled>E</button>
+        </div>
+      </div>
+
+      <div class="toast" id="swToast"></div>
+    </div>
+  </div>
+
+  <script>
+    var running = false;
+    var clockInterval = null;
+    var entries = [];
+
+    var startBtn = document.getElementById('swStart');
+    var copyBtn  = document.getElementById('swCopy');
+    var resetBtn = document.getElementById('swReset');
+    var clock    = document.getElementById('swClock');
+    var list     = document.getElementById('swList');
+    var flash    = document.getElementById('swFlash');
+    var toast    = document.getElementById('swToast');
+
+    var sideBtns = ['swBtnT','swBtnQ','swBtnG','swBtnE'].map(function(id) {
+      return document.getElementById(id);
+    });
+
+    var meta = {
+      swBtnT: { label:'T', color:'#97cce7' },
+      swBtnQ: { label:'Q', color:'#f1a481' },
+      swBtnG: { label:'G', color:'#67ac5b' },
+      swBtnE: { label:'E', color:'#f5c344' }
+    };
+
+    function now() {
+      var d = new Date();
+      return String(d.getHours()).padStart(2,'0') + ':' +
+             String(d.getMinutes()).padStart(2,'0') + ':' +
+             String(d.getSeconds()).padStart(2,'0') + '.' +
+             String(Math.floor(d.getMilliseconds() / 10)).padStart(2,'0');
+    }
+
+    function addEntry(label, color) {
+      entries.push({ label:label, color:color, time:now() });
+      render();
+      doFlash(color);
+    }
+
+    function render() {
+      list.innerHTML = '';
+      entries.forEach(function(e) {
+        var row = document.createElement('div');
+        row.className = 'sw-entry';
+        var lbl = document.createElement('span');
+        lbl.className = 'sw-lbl';
+        lbl.style.color = e.color;
+        lbl.textContent = e.label;
+        var t = document.createElement('span');
+        t.className = 'sw-time';
+        t.textContent = e.time;
+        row.appendChild(lbl);
+        row.appendChild(t);
+        list.appendChild(row);
+      });
+      if (entries.length > 0) {
+        list.classList.add('has-entries');
+      } else {
+        list.classList.remove('has-entries');
+      }
+      list.scrollTop = list.scrollHeight;
+    }
+
+    function doFlash(color) {
+      flash.style.transition = 'none';
+      flash.style.background = color;
+      flash.style.opacity = '0.9';
+      setTimeout(function() {
+        flash.style.transition = 'opacity 0.4s ease-out';
+        flash.style.opacity = '0';
+      }, 130);
+    }
+
+    function setSide(on) {
+      sideBtns.forEach(function(b) { b.disabled = !on; });
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      setTimeout(function() { toast.style.opacity = '0'; }, 2500);
+    }
+
+    startBtn.addEventListener('click', function() {
+      if (!running) {
+        running = true;
+        startBtn.textContent = 'Stop';
+        startBtn.classList.add('running');
+        setSide(true);
+        clockInterval = setInterval(function() { clock.textContent = now(); }, 50);
+        addEntry('S', '#4caf50');
+      } else {
+        running = false;
+        startBtn.textContent = 'Start';
+        startBtn.classList.remove('running');
+        setSide(false);
+        clearInterval(clockInterval);
+        clockInterval = null;
+        addEntry('S', '#f44336');
+        clock.textContent = now();
+      }
+    });
+
+    resetBtn.addEventListener('click', function() {
+      running = false;
+      startBtn.textContent = 'Start';
+      startBtn.classList.remove('running');
+      setSide(false);
+      clearInterval(clockInterval);
+      clockInterval = null;
+      entries = [];
+      list.innerHTML = '';
+      list.classList.remove('has-entries');
+      clock.textContent = '--:--:--.--';
+    });
+
+    copyBtn.addEventListener('click', function() {
+      if (!entries.length) { showToast('Nothing to copy yet.'); return; }
+      var text = entries.map(function(e) { return e.label + ' ' + e.time; }).join('\n');
+      navigator.clipboard.writeText(text).then(function() {
+        showToast('Times copied to clipboard.');
+      }).catch(function() {
+        showToast('Copy failed — try a different browser.');
+      });
+    });
+
+    Object.keys(meta).forEach(function(id) {
+      document.getElementById(id).addEventListener('click', function() {
+        addEntry(meta[id].label, meta[id].color);
+      });
+    });
+  </script>
+</body>
+</html>

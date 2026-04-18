@@ -2,7 +2,7 @@
   "name": "Soccer Stopwatch",
   "short_name": "Stopwatch",
   "description": "Stopwatch for recording soccer games",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

@@ -65,6 +65,15 @@ COLORS — easy to change:
   plain-English label so you can find and change them
   without hunting through the code.
 
+─────────────────────────────────────────────────────────────
+SECRET QR CODE OVERLAY:
+─────────────────────────────────────────────────────────────
+  Simultaneously press and hold the lower-left AND
+  upper-right invisible corners of the list box for
+  about 1 second. A QR code overlay will appear linking
+  to the app URL. Tap anywhere to dismiss it.
+  The URL is set in the SHARE_URL variable in the script.
+
 =============================================================
 -->
 <head>
@@ -129,7 +138,7 @@ COLORS — easy to change:
     }
 
     /* =============================================================
-       MAIN CONTAINER — 100:130 aspect ratio
+       MAIN CONTAINER — 100:160 aspect ratio
        ============================================================= */
     #sw {
       width: 100%;
@@ -289,6 +298,54 @@ COLORS — easy to change:
     }
 
     /* =============================================================
+       INVISIBLE QR TRIGGER ZONES — corners of the list box
+       ============================================================= */
+    .qr-zone {
+      position: absolute;
+      width: 28%;
+      height: 28%;
+      z-index: 10;
+      background: transparent;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .qr-zone-tl { top: 0;    left: 0;  }
+    .qr-zone-tr { top: 0;    right: 0; }
+    .qr-zone-bl { bottom: 0; left: 0;  }
+    .qr-zone-br { bottom: 0; right: 0; }
+
+    /* =============================================================
+       QR CODE OVERLAY
+       ============================================================= */
+    #qr-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.92);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      cursor: pointer;
+    }
+    #qr-overlay.visible { display: flex; }
+
+    #qr-overlay canvas {
+      border-radius: 12px;
+      padding: 16px;
+      background: #ffffff;
+    }
+
+    #qr-label {
+      color: #ffffff;
+      font-size: clamp(14px, 3.5vw, 18px);
+      font-weight: 500;
+      text-align: center;
+      letter-spacing: 0.03em;
+      opacity: 0.85;
+    }
+
+    /* =============================================================
        TOAST — clipboard confirmation message
        ============================================================= */
     .toast {
@@ -302,10 +359,14 @@ COLORS — easy to change:
       opacity: 0;
     }
   </style>
+
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <!-- QR Code library — loaded from CDN, works offline after first cache -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body>
@@ -328,10 +389,18 @@ COLORS — easy to change:
           <button class="side-btn" id="swBtnG" disabled>G</button>
         </div>
         <div class="gap-col"></div>
+
         <div class="list-col">
           <div id="swList"></div>
           <div class="flash-overlay" id="swFlash"></div>
+
+          <!-- Invisible touch zones in the four corners -->
+          <div class="qr-zone qr-zone-tl" id="zoneTL"></div>
+          <div class="qr-zone qr-zone-tr" id="zoneTR"></div>
+          <div class="qr-zone qr-zone-bl" id="zoneBL"></div>
+          <div class="qr-zone qr-zone-br" id="zoneBR"></div>
         </div>
+
         <div class="gap-col"></div>
         <div class="side-col">
           <button class="side-btn" id="swBtnQ" disabled>Q</button>
@@ -343,7 +412,21 @@ COLORS — easy to change:
     </div>
   </div>
 
+  <!-- QR Overlay — tap anywhere to dismiss -->
+  <div id="qr-overlay">
+    <div id="qr-code"></div>
+    <div id="qr-label">Scan to get this app &bull; tap to dismiss</div>
+  </div>
+
   <script>
+    /* =============================================================
+       SHARE URL — update this if your hosting URL ever changes
+       ============================================================= */
+    var SHARE_URL = 'https://glfilkins.github.io/StopWatch/';
+
+    /* =============================================================
+       STOPWATCH CORE
+       ============================================================= */
     var running = false;
     var clockInterval = null;
     var entries = [];
@@ -471,6 +554,98 @@ COLORS — easy to change:
     Object.keys(meta).forEach(function(id) {
       document.getElementById(id).addEventListener('click', function() {
         addEntry(meta[id].label, meta[id].color);
+      });
+    });
+
+    /* =============================================================
+       QR CODE — generated once on load
+       ============================================================= */
+    var qrGenerated = false;
+
+    function ensureQR() {
+      if (qrGenerated) return;
+      try {
+        new QRCode(document.getElementById('qr-code'), {
+          text: SHARE_URL,
+          width: 220,
+          height: 220,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+        qrGenerated = true;
+      } catch(e) {}
+    }
+
+    /* =============================================================
+       QR OVERLAY — show & dismiss
+       ============================================================= */
+    var overlay = document.getElementById('qr-overlay');
+
+    function showQR() {
+      ensureQR();
+      overlay.classList.add('visible');
+    }
+
+    function hideQR() {
+      overlay.classList.remove('visible');
+    }
+
+    overlay.addEventListener('click', hideQR);
+    overlay.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      hideQR();
+    });
+
+    /* =============================================================
+       SECRET GESTURE — simultaneous hold of lower-left + upper-right
+       corners of the list box for ~1 second triggers QR overlay.
+       The four zones are: TL, TR, BL, BR.
+       Trigger pair: BL (lower-left) + TR (upper-right)
+       ============================================================= */
+    var activeZones = {};
+    var qrHoldTimer = null;
+    var HOLD_MS = 900;
+
+    function zoneId(el) { return el.id; }
+
+    function checkTrigger() {
+      var hasBL = !!activeZones['zoneBL'];
+      var hasTR = !!activeZones['zoneTR'];
+      if (hasBL && hasTR) {
+        qrHoldTimer = setTimeout(function() {
+          showQR();
+          activeZones = {};
+        }, HOLD_MS);
+      }
+    }
+
+    function cancelHold() {
+      if (qrHoldTimer) {
+        clearTimeout(qrHoldTimer);
+        qrHoldTimer = null;
+      }
+    }
+
+    ['zoneTL','zoneTR','zoneBL','zoneBR'].forEach(function(id) {
+      var el = document.getElementById(id);
+
+      el.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        activeZones[id] = true;
+        cancelHold();
+        checkTrigger();
+      }, { passive: false });
+
+      el.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        delete activeZones[id];
+        cancelHold();
+      }, { passive: false });
+
+      el.addEventListener('touchcancel', function() {
+        delete activeZones[id];
+        cancelHold();
       });
     });
   </script>

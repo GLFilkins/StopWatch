@@ -6,8 +6,17 @@
 =============================================================
 
 WHAT YOU HAVE:
-  This is a single self-contained HTML file. No internet
-  connection is needed to run it once it's on your phone.
+  Two files: index.html and sw.js — both must be uploaded
+  to your GitHub repository together.
+
+  After opening the app once with any internet connection,
+  the service worker (sw.js) caches everything locally.
+  From that point on, the app runs fully offline — no
+  hotspot or wifi needed at the field.
+
+  NOTE: If the app hasn't been opened for a week or more,
+  iOS may clear the cache. Open it once on wifi before
+  heading out if there's been a long gap.
 
 HOW TO HOST IT (pick one):
 
@@ -366,8 +375,19 @@ SECRET QR CODE OVERLAY:
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-  <!-- QR Code library — loaded from CDN, works offline after first cache -->
+  <!-- QR Code library — cached by service worker after first load -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Service Worker registration — enables full offline use -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js').catch(function(err) {
+          console.log('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
 </head>
 
 <body>
